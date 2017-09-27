@@ -22,5 +22,14 @@ namespace ModCore.Entities
 
         [JsonProperty("blockinvites")]
         public bool BlockInvites = true;
+        
+        [JsonProperty("blockiploggers")]
+        public bool BlockIpLoggers = true;
+        
+        [JsonProperty("blockbooters")]
+        public bool BlockBooters = true;
+        
+        [JsonProperty("blockurlshorteners")]
+        public bool BlockUrlShorteners = false;
     }
 }
