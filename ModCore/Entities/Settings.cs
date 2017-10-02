@@ -1,32 +1,61 @@
-﻿using DSharpPlus.Entities;
+﻿using ModCore.Database;
 using Newtonsoft.Json;
+using Npgsql;
 
 namespace ModCore.Entities
 {
-    public class Settings
+    public struct Settings
     {
         [JsonProperty("token")]
-        internal string Token = "Your token";
-
-        [JsonProperty("color")] 
-        private string _color = "";
-        
-        [JsonIgnore]
-        public DiscordColor Color => new DiscordColor(_color);
+        public string Token { get; private set; }
 
         [JsonProperty("prefix")]
-        public string Prefix = "+";
-
-        [JsonProperty("mute_role")]
-        public ulong MuteRoleId;
-
-        [JsonProperty("block_invites")]
-        public bool BlockInvites = true;
+        public string DefaultPrefix { get; private set; }
 
         [JsonProperty("shard_count")]
-        public int ShardCount = 1;
+        public int ShardCount { get; private set; }
 
-        [JsonProperty("message_cache_size")]
-        public int MessageCacheSize = 50;
+        [JsonProperty("database")]
+        public DatabaseSettings Database { get; private set; }
+    }
+
+    public struct DatabaseSettings
+    {
+        [JsonProperty("hostname")]
+        public string Hostname { get; private set; }
+
+        [JsonProperty("port")]
+        public int Port { get; private set; }
+
+        [JsonProperty("database")]
+        public string Database { get; private set; }
+
+        [JsonProperty("username")]
+        public string Username { get; private set; }
+
+        [JsonProperty("password")]
+        public string Password { get; private set; }
+
+        public string BuildConnectionString()
+        {
+            var csb = new NpgsqlConnectionStringBuilder
+            {
+                Host = this.Hostname,
+                Port = this.Port,
+                Database = this.Database,
+                Username = this.Username,
+                Password = this.Password,
+
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true,
+
+                Pooling = false
+            };
+
+            return csb.ConnectionString;
+        }
+
+        public DatabaseContextBuilder CreateContextBuilder() =>
+            new DatabaseContextBuilder(this.BuildConnectionString());
     }
 }

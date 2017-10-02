@@ -1,15 +1,21 @@
-﻿using DSharpPlus;
+﻿using System;
+using System.Threading.Tasks;
+using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
-using ModCore.Entities;
-using System;
-using System.Threading.Tasks;
 
 namespace ModCore.Commands
 {
     public class Main
     {
+        private DatabaseContextBuilder Database { get; }
+
+        public Main(DatabaseContextBuilder db)
+        {
+            this.Database = db;
+        }
+
         [Command("ping")]
         public async Task PingAsync(CommandContext ctx)
         {
@@ -73,8 +79,26 @@ namespace ModCore.Commands
                 await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
                 return;
             }
-            await m.BanAsync(7, $"Banned by: {ctx.Member.DisplayName} {(reason != "" ? "With reason: " + reason : "") }");
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await ctx.Guild.BanMemberAsync(m, 7, $"{ustr}{rstr}");
             await ctx.RespondAsync($"Banned user {m.DisplayName} (ID:{m.Id})");
+        }
+
+        [Command("hackban"), Aliases("hb"), RequirePermissions(Permissions.BanMembers)]
+        public async Task HackBanAsync(CommandContext ctx, ulong id, string reason = "")
+        {
+            if (ctx.Member.Id == id)
+            {
+                await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
+                return;
+            }
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await ctx.Guild.BanMemberAsync(id, 7, $"{ustr}{rstr}");
+            await ctx.RespondAsync($"User hackbanned successfully.");
         }
 
         [Command("kick"), Aliases("k"), RequirePermissions(Permissions.KickMembers)]
@@ -85,7 +109,10 @@ namespace ModCore.Commands
                 await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
                 return;
             }
-            await m.RemoveAsync($"Kicked by: {ctx.Member.DisplayName} {(reason != "" ? "With reason: " + reason : "") }");
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await m.RemoveAsync($"{ustr}{rstr}");
             await ctx.RespondAsync($"Kicked user {m.DisplayName} (ID:{m.Id})");
         }
 
@@ -97,8 +124,11 @@ namespace ModCore.Commands
                 await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
                 return;
             }
-            await m.BanAsync(7, $"Softbanned by: {ctx.Member.DisplayName} {(reason != "" ? "With reason: " + reason : "") }");
-            await m.UnbanAsync(ctx.Guild, $"Softbanned by: {ctx.Member.DisplayName} {(reason != "" ? "With reason: " + reason : "") }");
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await m.BanAsync(7, $"{ustr}{rstr} (softban)");
+            await m.UnbanAsync(ctx.Guild, $"{ustr}{rstr}");
             await ctx.RespondAsync($"Softbanned user {m.DisplayName} (ID:{m.Id})");
         }
 
@@ -110,9 +140,17 @@ namespace ModCore.Commands
                 await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
                 return;
             }
-            var b = ctx.Dependencies.GetDependency<ModCoreShard>().Settings.MuteRoleId;
+            var b = ctx.Dependencies.GetDependency<Bot>().Settings.MuteRoleId;
             var mute = ctx.Guild.GetRole(b);
-            await m.GrantRoleAsync(mute);
+            if (b == 0 || mute == null)
+            {
+                await ctx.RespondAsync("Mute role is not configured or missing. Set a correct role and re-run this command.");
+                return;
+            }
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await m.GrantRoleAsync(mute, $"{ustr}{rstr} (mute)");
             await ctx.RespondAsync($"Muted user {m.DisplayName} (ID:{m.Id}) { (reason != "" ? "With reason: " + reason : "")}");
         }
 
@@ -124,10 +162,43 @@ namespace ModCore.Commands
                 await ctx.RespondAsync("You can't do that to yourself! You have so much to live for!");
                 return;
             }
-            var b = ctx.Dependencies.GetDependency<ModCoreShard>().Settings.MuteRoleId;
+            var b = ctx.Dependencies.GetDependency<Bot>().Settings.MuteRoleId;
             var mute = ctx.Guild.GetRole(b);
-            await m.RevokeRoleAsync(mute);
+            if (b == 0 || mute == null)
+            {
+                await ctx.RespondAsync("Mute role is not configured or missing. Set a correct role and re-run this command.");
+                return;
+            }
+
+            var ustr = $"{ctx.User.Username}#{ctx.User.Discriminator} ({ctx.User.Id})";
+            var rstr = string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}";
+            await m.RevokeRoleAsync(mute, $"{ustr}{rstr} (unmute)");
             await ctx.RespondAsync($"Unmuted user {m.DisplayName} (ID:{m.Id}) { (reason != "" ? "With reason: " + reason : "")}");
         }
     }
 }
+
+﻿using System;
+using System.Threading.Tasks;
+using DSharpPlus;
+using ModCore.Database;
+using ModCore.Entities;
+
+
+            var gcfg = ctx.GetGuildSettings();
+            if (gcfg == null)
+            {
+                await ctx.RespondAsync("Guild is not configured. Adjust this guild's configuration and re-run this command.");
+                return;
+            }
+
+            var b = gcfg.MuteRoleId;
+
+            var gcfg = ctx.GetGuildSettings();
+            if (gcfg == null)
+            {
+                await ctx.RespondAsync("Guild is not configured. Adjust this guild's configuration and re-run this command.");
+                return;
+            }
+
+            var b = gcfg.MuteRoleId;

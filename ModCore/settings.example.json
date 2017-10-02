@@ -1,0 +1,13 @@
+{
+    "token": "insert bot token here",
+    "prefix": "?>",
+    "shard_count": 1,
+    "database": 
+    {
+        "hostname": "localhost",
+        "port": 5432,
+        "database": "modcore",
+        "username": "modcore",
+        "password": "modcore"
+    }
+}
